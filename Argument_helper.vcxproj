@@ -140,6 +140,10 @@
   <ItemGroup>
     <ClInclude Include="Argument_helper.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Argument_helper.cpp" />
+    <ClCompile Include="Argument_helper_example.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
