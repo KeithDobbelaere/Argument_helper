@@ -32,6 +32,7 @@ int main(int argc, const char* argv[]) {
 		// These are non-optional values which will be read in the order they're defined.
 		ah.new_param("threadId", "Thread ID of some target process to control.", threadId);
 		ah.new_param("priority", "Sets new priority value of the targeted process.", priority);
+		// These are optional parameters.
 		ah.new_optional_param("file_name", "This particular argument is optional, even without a flag associated with it. "
 			"The parser won't trigger an error if this third value is disregarded. What follows is just filler to show how "
 			"lengthy descriptions will wrap around in the usage screen, which is accessible via the /? flag, as usual. "
@@ -47,7 +48,7 @@ int main(int argc, const char* argv[]) {
 		ah.new_flag("b", "And here's another one.", B);
 		ah.new_named_string_vector("vector", "strings ...", "This is a switch which accepts a list of arguments, separated "
 			"by white-space. Not sure what you'd need this for, but here it is.", strings);
-
+		// This is text to be displayed in the usage screen, accessible with the /? switch.
 		ah.set_example_text("\n>ARGUMENT_HELPER  "
 			"543 21 /t 5000 /d 1.79769e+308 /f 3.14159 /s \"one string\" /B\n/vector 1 2 3 four five\n\n"
 			"    Results:\n"
