@@ -1,280 +1,66 @@
 /*
- *
- * Argument Helper
- *
- * Daniel Russel drussel@alumni.princeton.edu
- * Stanford University
- *
- *
- * This software is not subject to copyright protection and is in the
- * public domain. Neither Stanford nor the author assume any
- * responsibility whatsoever for its use by other parties, and makes no
- * guarantees, expressed or implied, about its quality, reliability, or
- * any other characteristic.
- *
- */
+* Argument Helper
+*
+* Daniel Russel drussel@alumni.princeton.edu
+* Stanford University
+*
+*
+* This software is not subject to copyright protection and is in the
+* public domain. Neither Stanford nor the author assume any
+* responsibility whatsoever for its use by other parties, and makes no
+* guarantees, expressed or implied, about its quality, reliability, or
+* any other characteristic.
+*
+*/
+
+/********************************************************************
+ Argument Helper
+
+ Refactored/Updated by
+ Keith Dobbelaere  keith77mn77@gmail.com
+ 5/17/2020
+ *******************************************************************/
+#include <cassert>
 
 #include "Argument_helper.h"
 
-
-#include <iostream>
-#include <cstdlib>
-#include <cstdio>
- //#include <limits>
-#include <cassert>
-
-
-
 namespace dsr {
 
-	bool verbose = false, VERBOSE = false;
-
-
-
-	// This is a base class for representing one argument value.
-	/*
-	   This is inherited by many classes and which represent the different types.
-	*/
-	class Argument_helper::Argument_target {
-	public:
-		char key;
-		std::string long_name;
-		std::string description;
-		std::string arg_description;
-
-		Argument_target(char k, const std::string lname,
-			const std::string descr,
-			const std::string arg_descr) {
-			key = k;
-			long_name = lname;
-			description = descr;
-			arg_description = arg_descr;
-		}
-		Argument_target(const std::string descr,
-			const std::string arg_descr) {
-			key = 0;
-			long_name = "";
-			description = descr;
-			arg_description = arg_descr;
-		}
-		virtual bool process(int&, const char**&) = 0;
-		virtual void write_name(std::ostream& out) const;
-		virtual void write_value(std::ostream& out) const = 0;
-		virtual void write_usage(std::ostream& out) const;
-		virtual ~Argument_target() {}
-	};
-
 	void Argument_helper::Argument_target::write_name(std::ostream& out) const {
-		if (key != 0) out << '-' << key;
-		else if (!long_name.empty()) out << "--" << long_name;
-		else out << arg_description;
+		bool has_key = !key.empty();
+		bool has_arg_desc = !arg_description.empty();
+		if (has_key && has_arg_desc) {
+			out << "[/" << key << ' ' << arg_description << "] ";
+		}
+		else {
+			if (has_key) out << "[/" << key << "] ";
+			else if (is_optional)
+				out << '[' << arg_description << "] ";
+			else
+				out << arg_description << ' ';
+		}
 	}
 
 
 	void Argument_helper::Argument_target::write_usage(std::ostream& out) const {
-		if (key != 0) {
-			out << '-' << key;
-			out << "/--" << long_name;
-		}
-		out << ' ' << arg_description;
-		out << "\t" << description;
-		out << " Value: ";
-		write_value(out);
-		out << std::endl;
+		out << "\t";
+		write_name(out);
+		out << '\n';
+		Argument_helper::text_wrap(description.c_str(), out, 50, "\t   ");
 	}
 
 	class Argument_helper::FlagTarget : public Argument_helper::Argument_target {
 	public:
 		bool& val;
-		FlagTarget(char k, const char* lname,
-			const char* descr,
-			bool& b) : Argument_target(k, std::string(lname), std::string(descr),
-				std::string()), val(b) {}
+		FlagTarget(const char* k, const char* descr, bool& b) :
+			Argument_target(k, std::string(descr), std::string()), val(b) {
+			val = false;
+		}
 		virtual bool process(int&, const char**&) {
-			val = !val;
+			val ^= true;
 			return true;
 		}
-		virtual void write_value(std::ostream& out) const {
-			out << val;
-		}
-
-		virtual void write_usage(std::ostream& out) const {
-			if (key != 0) {
-				out << '-' << key;
-				out << "/--" << long_name;
-			}
-			out << "\t" << description;
-			out << " Value: ";
-			write_value(out);
-			out << std::endl;
-		}
-		virtual ~FlagTarget() {}
-	};
-
-	class Argument_helper::DoubleTarget : public Argument_target {
-	public:
-		double& val;
-		DoubleTarget(char k, const char* lname,
-			const char* arg_descr,
-			const char* descr, double& b) : Argument_target(k, std::string(lname),
-				std::string(descr),
-				std::string(arg_descr)), val(b) {}
-		DoubleTarget(const char* arg_descr,
-			const char* descr, double& b) : Argument_target(std::string(descr),
-				std::string(arg_descr)), val(b) {}
-		virtual bool process(int& argc, const char**& argv) {
-			if (argc == 0) {
-				std::cerr << "Missing value for argument." << std::endl;
-				return false;
-			}
-			if (sscanf_s(argv[0], "%le", &val) == 1) {
-				--argc;
-				++argv;
-				return true;
-			}
-			else {
-				std::cerr << "Double not found at " << argv[0] << std::endl;
-				return false;
-			}
-		}
-		virtual void write_value(std::ostream& out) const {
-			out << val;
-		}
-		virtual ~DoubleTarget() {}
-	};
-
-	class Argument_helper::IntTarget : public Argument_target {
-	public:
-		int& val;
-		IntTarget(const char* arg_descr,
-			const char* descr, int& b) : Argument_target(0, std::string(),
-				std::string(descr),
-				std::string(arg_descr)),
-			val(b) {}
-		IntTarget(char k, const char* lname,
-			const char* arg_descr,
-			const char* descr, int& b) : Argument_target(k, std::string(lname),
-				std::string(descr),
-				std::string(arg_descr)),
-			val(b) {}
-		virtual bool process(int& argc, const char**& argv) {
-			if (argc == 0) {
-				std::cerr << "Missing value for argument." << std::endl;
-				return false;
-			}
-			if (sscanf_s(argv[0], "%d", &val) == 1) {
-				--argc;
-				++argv;
-				return true;
-			}
-			else {
-				std::cerr << "Integer not found at " << argv[0] << std::endl;
-				return false;
-			}
-		}
-		virtual void write_value(std::ostream& out) const {
-			out << val;
-		}
-		virtual ~IntTarget() {}
-	};
-
-	class Argument_helper::UIntTarget : public Argument_target {
-	public:
-		unsigned int& val;
-		UIntTarget(const char* arg_descr,
-			const char* descr, unsigned int& b) : Argument_target(0, std::string(),
-				std::string(descr),
-				std::string(arg_descr)),
-			val(b) {}
-		UIntTarget(char k, const char* lname,
-			const char* arg_descr,
-			const char* descr, unsigned int& b) : Argument_target(k, std::string(lname),
-				std::string(descr),
-				std::string(arg_descr)),
-			val(b) {}
-		virtual bool process(int& argc, const char**& argv) {
-			if (argc == 0) {
-				std::cerr << "Missing value for argument." << std::endl;
-				return false;
-			}
-			if (sscanf_s(argv[0], "%ud", &val) == 1) {
-				--argc;
-				++argv;
-				return true;
-			}
-			else {
-				std::cerr << "Unsigned integer not found at " << argv[0] << std::endl;
-				return false;
-			}
-		}
-		virtual void write_value(std::ostream& out) const {
-			out << val;
-		}
-		virtual ~UIntTarget() {}
-	};
-
-
-	class Argument_helper::CharTarget : public Argument_target {
-	public:
-		char& val;
-		CharTarget(char k, const char* lname,
-			const char* arg_descr,
-			const char* descr, char& b) : Argument_target(k, std::string(lname),
-				std::string(descr),
-				std::string(arg_descr)), val(b) {}
-		CharTarget(const char* arg_descr,
-			const char* descr, char& b) : Argument_target(std::string(descr),
-				std::string(arg_descr)), val(b) {}
-		virtual bool process(int& argc, const char**& argv) {
-			if (argc == 0) {
-				std::cerr << "Missing value for argument." << std::endl;
-				return false;
-			}
-			if (sscanf_s(argv[0], "%c", &val, 1) == 1) {
-				--argc;
-				++argv;
-				return true;
-			}
-			else {
-				std::cerr << "Character not found at " << argv[0] << std::endl;
-				return false;
-			}
-		}
-		virtual void write_value(std::ostream& out) const {
-			out << val;
-		}
-		virtual ~CharTarget() {}
-	};
-
-
-	class Argument_helper::StringTarget : public Argument_target {
-	public:
-		std::string& val;
-		StringTarget(const char* arg_descr,
-			const char* descr, std::string& b) : Argument_target(0, std::string(),
-				descr,
-				arg_descr),
-			val(b) {}
-
-		StringTarget(char k, const char* lname, const char* arg_descr,
-			const char* descr, std::string& b) : Argument_target(k, lname, descr,
-				arg_descr),
-			val(b) {}
-
-		virtual bool process(int& argc, const char**& argv) {
-			if (argc == 0) {
-				std::cerr << "Missing string argument." << std::endl;
-				return false;
-			}
-			val = argv[0];
-			--argc;
-			++argv;
-			return true;
-		}
-		virtual void write_value(std::ostream& out) const {
-			out << val;
-		}
-		virtual ~StringTarget() {}
+		virtual void write_value(std::ostream& out) const { out << std::boolalpha << val; }
 	};
 
 
@@ -282,13 +68,11 @@ namespace dsr {
 	public:
 		std::vector<std::string>& val;
 
-		StringVectorTarget(char k, const char* lname, const char* arg_descr,
-			const char* descr, std::vector<std::string>& b) : Argument_target(k, lname, descr,
-				arg_descr),
-			val(b) {}
+		StringVectorTarget(const char* k, const char* arg_descr, const char* descr, std::vector<std::string>& b) :
+			Argument_target(k, descr, arg_descr), val(b) {}
 
 		virtual bool process(int& argc, const char**& argv) {
-			while (argc > 0 && argv[0][0] != '-') {
+			while (argc > 0 && argv[0][0] != '/') {
 				val.push_back(argv[0]);
 				--argc;
 				++argv;
@@ -296,7 +80,7 @@ namespace dsr {
 			return true;
 		}
 		virtual void write_value(std::ostream& out) const {
-			for (unsigned int i = 0; i < val.size(); ++i) {
+			for (size_t i = 0; i < val.size(); ++i) {
 				out << val[i] << " ";
 			}
 		}
@@ -304,18 +88,16 @@ namespace dsr {
 	};
 
 
-
-
-	Argument_helper::Argument_helper() {
-		new_flag('v', "verbose", "Whether to print extra information", verbose);
-		new_flag('V', "VERBOSE", "Whether to print lots of extra information", VERBOSE);
+	Argument_helper::~Argument_helper() {
+		for (std::vector<Argument_target*>::iterator it = all_arguments_.begin();
+			it != all_arguments_.end(); ++it) {
+			delete* it;
+		}
 	}
 
 
-
 	void Argument_helper::set_string_vector(const char* arg_description,
-		const char* description,
-		std::vector<std::string>& dest) {
+		const char* description, std::vector<std::string>& dest) {
 		assert(extra_arguments_ == NULL);
 		extra_arguments_descr_ = description;
 		extra_arguments_arg_descr_ = arg_description;
@@ -330,8 +112,19 @@ namespace dsr {
 		description_ = descr;
 	}
 
-	void Argument_helper::set_name(const char* descr) {
-		name_ = descr;
+	void Argument_helper::set_name(const char* name) {
+		name_ = name;
+		for (std::string::iterator p = name_.begin(); p != name_.end(); ++p)
+			*p = toupper(*p);
+	}
+
+	void Argument_helper::set_name_long_form(const char* name) {
+		name_long_form_ = name;
+	}
+
+	void Argument_helper::set_company_name(const char* company)
+	{
+		company_name_ = company;
 	}
 
 	void Argument_helper::set_version(const char* s) {
@@ -345,191 +138,104 @@ namespace dsr {
 		date_ = date;
 	}
 
+	void Argument_helper::set_example_text(const char* example_text) {
+		example_text_ = example_text;
+	}
+
 	void Argument_helper::new_argument_target(Argument_target* t) {
-		if (t && t->key != 0) {
-			if (short_names_.find(t->key) != short_names_.end()) {
-				std::cerr << "Two arguments are defined with the same character key, namely" << std::endl;
-				short_names_[t->key]->write_usage(std::cerr);
-				std::cerr << "\n and \n";
+		if (t && !t->key.empty()) {
+			if (keys_.find(t->key) != keys_.end()) {
+				std::cerr << "\nError: Two arguments are defined with the same character key, namely\n";
+				keys_[t->key]->write_usage(std::cerr);
+				std::cerr << " and \n";
 				t->write_usage(std::cerr);
-				std::cerr << std::endl;
+				std::cerr << '\n';
 			}
-			short_names_[t->key] = t;
-		}
-		if (!t->long_name.empty()) {
-			if (long_names_.find(t->long_name) != long_names_.end()) {
-				std::cerr << "Two arguments are defined with the same long key, namely" << std::endl;
-				long_names_[t->long_name]->write_usage(std::cerr);
-				std::cerr << "\n and \n";
-				t->write_usage(std::cerr);
-				std::cerr << std::endl;
-			}
-			long_names_[t->long_name] = t;
+			keys_[t->key] = t;
 		}
 		all_arguments_.push_back(t);
 	}
 
-	void Argument_helper::new_flag(char key, const char* long_name, const char* description, bool& dest) {
-		Argument_target* t = new FlagTarget(key, long_name, description, dest);
+	void Argument_helper::new_flag(const char* key, const char* description, bool& dest) {
+		Argument_target* t = new FlagTarget(key, description, dest);
+		t->is_optional = true;
 		new_argument_target(t);
 	};
 
-
-
-	void Argument_helper::new_string(const char* arg_description, const char* description,
-		std::string& dest) {
-		Argument_target* t = new StringTarget(arg_description, description, dest);
-		unnamed_arguments_.push_back(t);
-		all_arguments_.push_back(t);
-	};
-	void Argument_helper::new_optional_string(const char* arg_description, const char* description,
-		std::string& dest) {
-		Argument_target* t = new StringTarget(arg_description, description, dest);
-		optional_unnamed_arguments_.push_back(t);
-	};
-	void Argument_helper::new_named_string(char key, const char* long_name,
-		const char* arg_description, const char* description,
-		std::string& dest) {
-		Argument_target* t = new StringTarget(key, long_name, arg_description, description, dest);
-		new_argument_target(t);
-	};
-
-
-	void Argument_helper::new_named_string_vector(char key, const char* long_name,
-		const char* arg_description, const char* description,
+	void Argument_helper::new_named_string_vector(const char* key, const char* arg_description, const char* description,
 		std::vector<std::string>& dest) {
-		Argument_target* t = new StringVectorTarget(key, long_name, arg_description, description, dest);
+		Argument_target* t = new StringVectorTarget(key, arg_description, description, dest);
+		t->is_optional = true;
 		new_argument_target(t);
 	};
-
-
-
-	void Argument_helper::new_int(const char* arg_description, const char* description,
-		int& dest) {
-		Argument_target* t = new IntTarget(arg_description, description, dest);
-		unnamed_arguments_.push_back(t);
-		all_arguments_.push_back(t);
-	};
-	void Argument_helper::new_optional_int(const char* arg_description, const char* description,
-		int& dest) {
-		Argument_target* t = new IntTarget(arg_description, description, dest);
-		optional_unnamed_arguments_.push_back(t);
-	};
-	void Argument_helper::new_named_int(char key, const char* long_name,
-		const char* arg_description, const char* description,
-		int& dest) {
-		Argument_target* t = new IntTarget(key, long_name, arg_description, description, dest);
-		new_argument_target(t);
-	};
-
-	void Argument_helper::new_unsigned_int(const char* arg_description, const char* description,
-		unsigned int& dest) {
-		Argument_target* t = new UIntTarget(arg_description, description, dest);
-		unnamed_arguments_.push_back(t);
-		all_arguments_.push_back(t);
-	};
-	void Argument_helper::new_optional_unsigned_int(const char* arg_description, const char* description,
-		unsigned int& dest) {
-		Argument_target* t = new UIntTarget(arg_description, description, dest);
-		optional_unnamed_arguments_.push_back(t);
-	};
-	void Argument_helper::new_named_unsigned_int(char key, const char* long_name,
-		const char* arg_description, const char* description,
-		unsigned int& dest) {
-		Argument_target* t = new UIntTarget(key, long_name, arg_description, description, dest);
-		new_argument_target(t);
-	};
-
-
-	void Argument_helper::new_double(const char* arg_description, const char* description,
-		double& dest) {
-		Argument_target* t = new DoubleTarget(arg_description, description, dest);
-		unnamed_arguments_.push_back(t);
-		all_arguments_.push_back(t);
-	};
-	void Argument_helper::new_optional_double(const char* arg_description, const char* description,
-		double& dest) {
-		Argument_target* t = new DoubleTarget(arg_description, description, dest);
-		optional_unnamed_arguments_.push_back(t);
-	};
-	void Argument_helper::new_named_double(char key, const char* long_name,
-		const char* arg_description, const char* description,
-		double& dest) {
-		Argument_target* t = new DoubleTarget(key, long_name, arg_description, description, dest);
-		new_argument_target(t);
-	};
-
-	void Argument_helper::new_char(const char* arg_description, const char* description,
-		char& dest) {
-		Argument_target* t = new CharTarget(arg_description, description, dest);
-		unnamed_arguments_.push_back(t);
-		all_arguments_.push_back(t);
-	};
-	void Argument_helper::new_optional_char(const char* arg_description, const char* description,
-		char& dest) {
-		Argument_target* t = new CharTarget(arg_description, description, dest);
-		optional_unnamed_arguments_.push_back(t);
-	};
-	void Argument_helper::new_named_char(char key, const char* long_name,
-		const char* arg_description, const char* description,
-		char& dest) {
-		Argument_target* t = new CharTarget(key, long_name, arg_description, description, dest);
-		new_argument_target(t);
-	};
-
-
 
 	void Argument_helper::write_usage(std::ostream& out) const {
-		out << name_ << " version " << version_.major << '.' << version_.minor << '.' << version_.revision << '.' << version_.build;
-		out << ", by " << author_ << std::endl;
-		out << description_ << std::endl;
-		out << "Compiled on " << date_ << std::endl << std::endl;
-		out << "Usage: " << name_ << " ";
+		if (!company_name_.empty())
+			out << company_name_ << ' ';
+		if (!name_long_form_.empty()) {
+			out << name_long_form_ << " Version ";
+			out << version_.major << '.' << version_.minor << '.' << version_.revision << '.' << version_.build << ' ';
+		}
+		out << name_ << '\n';
+		if (!author_.empty()) {
+			out << "Copyright (c) " << author_;
+			if (!date_.empty())
+				out << ", " << date_;
+			out << ". All rights reserved.\n";
+		}
+		out << '\n';
+		std::ostringstream oss;
+		oss << "Usage: " << name_ << " ";
 		for (UVect::const_iterator it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
-			(*it)->write_name(out);
-			out << " ";
+			(*it)->write_name(oss);
 		}
 		for (UVect::const_iterator it = optional_unnamed_arguments_.begin();
 			it != optional_unnamed_arguments_.end(); ++it) {
-			out << "[";
-			(*it)->write_name(out);
-			out << "] ";
+			(*it)->write_name(oss);
 		}
-		if (extra_arguments_ != NULL) {
-			out << "[" << extra_arguments_arg_descr_ << "]";
+		for (KeyMap::const_iterator it = keys_.begin(); it != keys_.end(); ++it) {
+			(it->second)->write_name(oss);
 		}
-
-		out << std::endl << std::endl;
-		out << "All arguments:\n";
+		text_wrap(oss.str().c_str(), out, 70);
+		if (extra_arguments_ != NULL)
+			text_wrap(extra_arguments_arg_descr_.c_str(), out, 70);
+		if (!description_.empty()) {
+			out << "\n\nDescription:\n";
+			text_wrap(description_.c_str(), out, 60, "\t");
+		}
+		out << "\n\nParameter list:\n";
 		for (UVect::const_iterator it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
 			(*it)->write_usage(out);
+			out << '\n';
 		}
 		for (UVect::const_iterator it = optional_unnamed_arguments_.begin();
 			it != optional_unnamed_arguments_.end(); ++it) {
 			(*it)->write_usage(out);
+			out << '\n';
 		}
-
-		out << extra_arguments_arg_descr_ << ": " << extra_arguments_descr_ << std::endl;
-		for (SMap::const_iterator it = short_names_.begin(); it != short_names_.end(); ++it) {
+		for (KeyMap::const_iterator it = keys_.begin(); it != keys_.end(); ++it) {
 			(it->second)->write_usage(out);
+			out << '\n';
+		}
+		if (!example_text_.empty()) {
+			out << "\nExample:\n";
+			out << example_text_ << '\n';
 		}
 	}
-
-
 
 	void Argument_helper::write_values(std::ostream& out) const {
 		for (UVect::const_iterator it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
-			out << (*it)->description;
+			(*it)->write_name(out);
 			out << ": ";
 			(*it)->write_value(out);
-			out << std::endl;
+			out << '\n';
 		}
 		for (UVect::const_iterator it = optional_unnamed_arguments_.begin();
 			it != optional_unnamed_arguments_.end(); ++it) {
-			out << (*it)->description;
+			(*it)->write_name(out);
 			out << ": ";
 			(*it)->write_value(out);
-			out << std::endl;
+			out << '\n';
 		}
 		if (extra_arguments_ != NULL) {
 			for (std::vector<std::string>::const_iterator it = extra_arguments_->begin();
@@ -537,83 +243,77 @@ namespace dsr {
 				out << *it << " ";
 			}
 		}
-
-		for (SMap::const_iterator it = short_names_.begin(); it != short_names_.end(); ++it) {
-			out << it->second->description;
+		for (KeyMap::const_iterator it = keys_.begin(); it != keys_.end(); ++it) {
+			it->second->write_name(out);
 			out << ": ";
 			it->second->write_value(out);
-			out << std::endl;
+			out << '\n';
 		}
 	}
 
-	Argument_helper::~Argument_helper() {
-		for (std::vector<Argument_target*>::iterator it = all_arguments_.begin();
-			it != all_arguments_.end(); ++it) {
-			delete* it;
-		}
+	void Argument_helper::text_wrap(const char* input_string, std::ostream& out, size_t max_length, const char* indent_string) {
+		std::istringstream iss(input_string);
+		size_t line_len = 0;
+		out << indent_string;
+		char word[100];
+		do {
+			word[0] = '\0';
+			iss >> word;
+			line_len += strlen(word) + 1;
+			if (line_len > max_length) {
+				out << '\n' << indent_string;
+				line_len = 0;
+			}
+			out << word << ' ';
+		} while (iss);
+		out << '\n';
 	}
-
 
 	void Argument_helper::process(int argc, const char** argv) {
-		name_ = argv[0];
+		const char* basename = strrchr(argv[0], '\\');
+		if (basename)
+			set_name(basename + 1);
+		else
+			set_name(argv[0]);
 		++argv;
 		--argc;
 
 		current_unnamed_ = unnamed_arguments_.begin();
 		current_optional_unnamed_ = optional_unnamed_arguments_.begin();
 
+
 		for (int i = 0; i < argc; ++i) {
-			if (strcmp(argv[i], "--help") == 0) {
+			if (strcmp(argv[i], "/?") == 0) {
 				write_usage(std::cout);
-				exit(0);
+				exit(EXIT_SUCCESS);
 			}
 		}
 
 		while (argc != 0) {
 
 			const char* cur_arg = argv[0];
-			if (cur_arg[0] == '-' && !seen_end_named_) {
+			if (cur_arg[0] == '/') {
 				--argc; ++argv;
-				if (cur_arg[1] == '-') {
-					if (cur_arg[2] == '\0') {
-						//std::cout << "Ending flags " << std::endl;
-						seen_end_named_ = true;
-					}
-					else {
-						// long argument
-						LMap::iterator f = long_names_.find(cur_arg + 2);
-						if (f != long_names_.end()) {
-							if (!f->second->process(argc, argv)) {
-								handle_error();
-							}
-						}
-						else {
-							std::cerr << "Invalid long argument " << cur_arg << ".\n";
-							handle_error();
-						}
-					}
+
+				if (cur_arg[1] == '\0') {
+					std::cerr << cur_arg << " is an invalid parameter.\n";
+					handle_error();
+				}
+				KeyMap::iterator f = keys_.find(cur_arg + 1);
+				if (f != keys_.end()) {
+					if (!f->second->process(argc, argv))
+						handle_error();
 				}
 				else {
-					if (cur_arg[1] == '\0') {
-						std::cerr << "Invalid argument " << cur_arg << ".\n";
-						handle_error();
-					}
-					SMap::iterator f = short_names_.find(cur_arg[1]);
-					if (f != short_names_.end()) {
-						if (!f->second->process(argc, argv)) {
-							handle_error();
-						}
-					}
-					else {
-						std::cerr << "Invalid short argument " << cur_arg << ".\n";
-						handle_error();
-					}
+					std::cerr << cur_arg << " is an invalid parameter.\n";
+					handle_error();
 				}
 			}
 			else {
 				if (current_unnamed_ != unnamed_arguments_.end()) {
 					Argument_target* t = *current_unnamed_;
-					t->process(argc, argv);
+					if (!t->process(argc, argv))
+						handle_error();
 					++current_unnamed_;
 				}
 				else if (current_optional_unnamed_ != optional_unnamed_arguments_.end()) {
@@ -627,27 +327,25 @@ namespace dsr {
 					++argv;
 				}
 				else {
-					std::cerr << "Invalid extra argument " << argv[0] << std::endl;
+					std::cerr << "Invalid extra argument " << argv[0] << '\n';
 					handle_error();
 				}
 			}
 		}
 
 		if (current_unnamed_ != unnamed_arguments_.end()) {
-			std::cerr << "Missing required arguments:" << std::endl;
+			std::cerr << "Missing required arguments:\n";
 			for (; current_unnamed_ != unnamed_arguments_.end(); ++current_unnamed_) {
 				(*current_unnamed_)->write_name(std::cerr);
-				std::cerr << std::endl;
+				std::cerr << '\n';
 			}
-			std::cerr << std::endl;
+			std::cerr << '\n';
 			handle_error();
 		}
-
-		if (VERBOSE) verbose = true;
 	}
 
 	void Argument_helper::handle_error() const {
 		write_usage(std::cerr);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 }

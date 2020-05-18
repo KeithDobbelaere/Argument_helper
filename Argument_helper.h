@@ -1,5 +1,4 @@
 /*
-*
 * Argument Helper
 *
 * Daniel Russel drussel@alumni.princeton.edu
@@ -14,97 +13,58 @@
 *
 */
 
+/********************************************************************
+ Refactored/Updated by
+ Keith Dobbelaere  keith77mn77@gmail.com
+ 5/17/2020
+ *******************************************************************/
 #ifndef _DSR_ARGS_H_
 #define _DSR_ARGS_H_
 #include <vector>
 #include <map>
-#include <list>
 #include <string>
+#include <iostream>
+#include <sstream>
 
 
 namespace dsr {
-	extern bool verbose, VERBOSE;
-
 
 	class Argument_helper {
 	private:
 		class Argument_target;
-
-
+		template<typename T>
+		class Specialized_target;
 		class FlagTarget;
-		class DoubleTarget;
-		class IntTarget;
-		class UIntTarget;
-		class StringTarget;
-		class CharTarget;
 		class StringVectorTarget;
 
 	public:
-		Argument_helper();
-		void new_flag(char key, const char* long_name, const char* description, bool& dest);
+		Argument_helper() = default;
 
-		void new_string(const char* arg_description, const char* description, std::string& dest);
-		void new_named_string(char key, const char* long_name,
-			const char* arg_description,
-			const char* description, std::string& dest);
-		void new_optional_string(const char* arg_description, const char* description, std::string& dest);
+		Argument_helper(const Argument_helper&) = delete;
+		Argument_helper& operator=(Argument_helper const&) = delete;
 
-		void new_int(const char* arg_description, const char* description, int& dest);
-		void new_named_int(char key, const char* long_name, const char* value_name,
-			const char* description,
-			int& dest);
-		void new_optional_int(const char* value_name,
-			const char* description,
-			int& dest);
+		~Argument_helper();
 
-		void new_double(const char* value_name,
-			const char* description,
-			double& dest);
+		void new_flag(const char* key, const char* description, bool& dest);
+		template<typename T>
+		void new_param(const char* arg_description, const char* description, T& dest);
+		template<typename T>
+		void new_named_param(const char* key, const char* value_name, const char* description, T& dest);
+		template <typename T>
+		void new_optional_param(const char* value_name, const char* description, T& dest);
 
-		void new_named_double(char key, const char* long_name, const char* value_name,
-			const char* description,
-			double& dest);
-		void new_optional_double(const char* value_name,
-			const char* description,
-			double& dest);
-
-		void new_char(const char* value_name,
-			const char* description,
-			char& dest);
-		void new_named_char(char key, const char* long_name, const char* value_name,
-			const char* description,
-			char& dest);
-		void new_optional_char(const char* value_name,
-			const char* description,
-			char& dest);
-
-		void new_unsigned_int(const char* value_name, const char* description,
-			unsigned int& dest);
-		void new_optional_unsigned_int(const char* value_name, const char* description,
-			unsigned int& dest);
-		void new_named_unsigned_int(char key, const char* long_name,
-			const char* value_name, const char* description,
-			unsigned int& dest);
-
-
-
-		void new_named_string_vector(char key, const char* long_name,
-			const char* value_name, const char* description,
+		void new_named_string_vector(const char* key, const char* value_name, const char* description,
 			std::vector<std::string>& dest);
 
-
 		void set_string_vector(const char* arg_description, const char* description, std::vector<std::string>& dest);
-
 		void set_author(const char* author);
-
 		void set_description(const char* descr);
-
 		void set_version(const char* str);
-
 		void set_name(const char* name);
-
+		void set_name_long_form(const char* name);
+		void set_company_name(const char* company);
 		void set_build_date(const char* date);
-
+		void set_example_text(const char* example_text);
 
 		void process(int argc, const char** argv);
 		void process(int argc, char** argv) {
@@ -113,45 +73,132 @@ namespace dsr {
 		void write_usage(std::ostream& out) const;
 		void write_values(std::ostream& out) const;
 
-		~Argument_helper();
 	protected:
-		typedef std::map<char, Argument_target*> SMap;
-		typedef std::map<std::string, Argument_target*> LMap;
+		typedef std::map<std::string, Argument_target*> KeyMap;
 		typedef std::vector<Argument_target*> UVect;
-		// A map from short names to arguments.
-		SMap short_names_;
-		// A map from long names to arguments.
-		LMap long_names_;
+
+		KeyMap keys_;
 		std::string author_;
 		std::string name_;
+		std::string name_long_form_;
+		std::string company_name_;
 		std::string description_;
 		std::string date_;
+		std::string example_text_;
 		struct version {
 			unsigned int major;
 			unsigned int minor;
 			unsigned int revision;
 			unsigned int build;
 		} version_ = { 0 };
-		bool seen_end_named_;
-		// List of unnamed arguments
-		std::vector<Argument_target*> unnamed_arguments_;
-		std::vector<Argument_target*> optional_unnamed_arguments_;
-		std::vector<Argument_target*> all_arguments_;
+
+		UVect unnamed_arguments_;
+		UVect optional_unnamed_arguments_;
+		UVect all_arguments_;
 		std::string extra_arguments_descr_;
 		std::string extra_arguments_arg_descr_;
-		std::vector<std::string>* extra_arguments_;
-		std::vector<Argument_target*>::iterator current_unnamed_;
-		std::vector<Argument_target*>::iterator current_optional_unnamed_;
+		std::vector<std::string>* extra_arguments_ = nullptr;
+		UVect::iterator current_unnamed_;
+		UVect::iterator current_optional_unnamed_;
+
 		void new_argument_target(Argument_target*);
 		void handle_error() const;
-	private:
-		Argument_helper(const Argument_helper&) {};
-		const Argument_helper& operator=(const Argument_helper&) { return *this; }
+		static void text_wrap(const char* input_string, std::ostream& out, size_t length, const char* indent_string = "");
 	};
 
+	class Argument_helper::Argument_target {
+	public:
+		std::string key;
+		std::string description;
+		std::string arg_description;
+		bool is_optional;
+
+		Argument_target(const std::string& k, const std::string& descr, const std::string& arg_descr) :
+			key(k), description(descr), arg_description(arg_descr), is_optional(false) {}
+
+		Argument_target(const std::string& descr, const std::string& arg_descr) :
+			key(""), description(descr), arg_description(arg_descr), is_optional(false) {}
+
+		virtual bool process(int&, const char**&) = 0;
+		virtual void write_name(std::ostream& out) const;
+		virtual void write_value(std::ostream& out) const = 0;
+		virtual void write_usage(std::ostream& out) const;
+		virtual ~Argument_target() {}
+	};
+
+	template <typename T>
+	class Argument_helper::Specialized_target : public Argument_helper::Argument_target {
+	public:
+		T& val;
+		Specialized_target(const char* arg_descr, const char* descr, T& b) :
+			Argument_target("", descr, arg_descr), val(b) {
+			val = { 0 };
+		}
+		Specialized_target(const char* k, const char* arg_descr, const char* descr, T& b) :
+			Argument_target(k, descr, arg_descr), val(b) {
+			val = { 0 };
+		}
+
+		virtual bool process(int& argc, const char**& argv) {
+			std::istringstream iss(argv[0]);
+			if (!(iss >> val)) {
+				std::cerr << "Invalid argument: " << argv[1] << '\n';
+				return false;
+			}
+			else if (!iss.eof()) {
+				std::cerr << "Trailing characters after argument: " << argv[0] << '\n';
+				return false;
+			}
+			--argc;
+			++argv;
+			return true;
+		}
+
+		virtual void write_value(std::ostream& out) const { out << val; }
+	};
+
+	template <>
+	class Argument_helper::Specialized_target<std::string> : public Argument_helper::Argument_target {
+	public:
+		std::string& val;
+		Specialized_target(const char* arg_descr, const char* descr, std::string& b) :
+			Argument_target("", descr, arg_descr), val(b) {}
+
+		Specialized_target(const char* k, const char* arg_descr, const char* descr, std::string& b) :
+			Argument_target(k, descr, arg_descr), val(b) {}
+
+		virtual bool process(int& argc, const char**& argv) {
+			val = argv[0];
+			--argc;
+			++argv;
+			return true;
+		}
+
+		virtual void write_value(std::ostream& out) const { out << val; }
+	};
+
+	template<typename T>
+	inline void Argument_helper::new_param(const char* arg_description, const char* description, T& dest)
+	{
+		Argument_target* t = new Specialized_target<T>(arg_description, description, dest);
+		unnamed_arguments_.push_back(t);
+		all_arguments_.push_back(t);
+	}
+
+	template<typename T>
+	inline void Argument_helper::new_named_param(const char* key, const char* value_name, const char* description, T& dest)
+	{
+		Argument_target* t = new Specialized_target<T>(key, value_name, description, dest);
+		t->is_optional = true;
+		new_argument_target(t);
+	}
+
+	template<typename T>
+	inline void Argument_helper::new_optional_param(const char* value_name, const char* description, T& dest)
+	{
+		Argument_target* t = new Specialized_target<T>(value_name, description, dest);
+		t->is_optional = true;
+		optional_unnamed_arguments_.push_back(t);
+	}
 }
-
-#define ARGUMENT_HELPER_BASICS(ah) ah.set_author("Daniel Russel, drussel@stanford.edu");\
-ah.set_build_date(__DATE__);
-
 #endif
