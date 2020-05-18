@@ -26,6 +26,13 @@
 
 namespace dsr {
 
+	Argument_helper::~Argument_helper() {
+		for (auto it = all_arguments_.begin(); it != all_arguments_.end(); ++it) {
+			delete* it;
+		}
+	}
+
+
 	void Argument_helper::Argument_target::write_name(std::ostream& out) const {
 		bool has_key = !key.empty();
 		bool has_arg_desc = !arg_description.empty();
@@ -88,18 +95,9 @@ namespace dsr {
 		}
 	};
 
-
-	Argument_helper::~Argument_helper() {
-		for (std::vector<Argument_target*>::iterator it = all_arguments_.begin();
-			it != all_arguments_.end(); ++it) {
-			delete* it;
-		}
-	}
-
-
 	void Argument_helper::set_string_vector(const char* arg_description,
 		const char* description, std::vector<std::string>& dest) {
-		assert(extra_arguments_ == NULL);
+		assert(extra_arguments_ == nullptr, "Error: More than one vector specified to store extra arguments.");
 		extra_arguments_descr_ = description;
 		extra_arguments_arg_descr_ = arg_description;
 		extra_arguments_ = &dest;
@@ -115,7 +113,7 @@ namespace dsr {
 
 	void Argument_helper::set_name(const char* name) {
 		name_ = name;
-		for (std::string::iterator p = name_.begin(); p != name_.end(); ++p)
+		for (auto p = name_.begin(); p != name_.end(); ++p)
 			*p = toupper(*p);
 	}
 
@@ -123,8 +121,7 @@ namespace dsr {
 		name_long_form_ = name;
 	}
 
-	void Argument_helper::set_company_name(const char* company)
-	{
+	void Argument_helper::set_company_name(const char* company) {
 		company_name_ = company;
 	}
 
@@ -187,34 +184,34 @@ namespace dsr {
 		out << '\n';
 		std::ostringstream oss;
 		oss << "Usage: " << name_ << " ";
-		for (UVect::const_iterator it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
+		for (auto it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
 			(*it)->write_name(oss);
 		}
-		for (UVect::const_iterator it = optional_unnamed_arguments_.begin();
+		for (auto it = optional_unnamed_arguments_.begin();
 			it != optional_unnamed_arguments_.end(); ++it) {
 			(*it)->write_name(oss);
 		}
-		for (KeyMap::const_iterator it = keys_.begin(); it != keys_.end(); ++it) {
+		for (auto it = keys_.begin(); it != keys_.end(); ++it) {
 			(it->second)->write_name(oss);
 		}
 		text_wrap(oss.str().c_str(), out, 70);
-		if (extra_arguments_ != NULL)
+		if (extra_arguments_ != nullptr)
 			text_wrap(extra_arguments_arg_descr_.c_str(), out, 70);
 		if (!description_.empty()) {
 			out << "\n\nDescription:\n";
 			text_wrap(description_.c_str(), out, 60, "\t");
 		}
 		out << "\n\nParameter list:\n";
-		for (UVect::const_iterator it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
+		for (auto it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
 			(*it)->write_usage(out);
 			out << '\n';
 		}
-		for (UVect::const_iterator it = optional_unnamed_arguments_.begin();
+		for (auto it = optional_unnamed_arguments_.begin();
 			it != optional_unnamed_arguments_.end(); ++it) {
 			(*it)->write_usage(out);
 			out << '\n';
 		}
-		for (KeyMap::const_iterator it = keys_.begin(); it != keys_.end(); ++it) {
+		for (auto it = keys_.begin(); it != keys_.end(); ++it) {
 			(it->second)->write_usage(out);
 			out << '\n';
 		}
@@ -225,26 +222,24 @@ namespace dsr {
 	}
 
 	void Argument_helper::write_values(std::ostream& out) const {
-		for (UVect::const_iterator it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
+		for (auto it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
 			(*it)->write_name(out);
 			out << ": ";
 			(*it)->write_value(out);
 			out << '\n';
 		}
-		for (UVect::const_iterator it = optional_unnamed_arguments_.begin();
-			it != optional_unnamed_arguments_.end(); ++it) {
+		for (auto it = optional_unnamed_arguments_.begin(); it != optional_unnamed_arguments_.end(); ++it) {
 			(*it)->write_name(out);
 			out << ": ";
 			(*it)->write_value(out);
 			out << '\n';
 		}
-		if (extra_arguments_ != NULL) {
-			for (std::vector<std::string>::const_iterator it = extra_arguments_->begin();
-				it != extra_arguments_->end(); ++it) {
+		if (extra_arguments_ != nullptr) {
+			for (auto it = extra_arguments_->begin(); it != extra_arguments_->end(); ++it) {
 				out << *it << " ";
 			}
 		}
-		for (KeyMap::const_iterator it = keys_.begin(); it != keys_.end(); ++it) {
+		for (auto it = keys_.begin(); it != keys_.end(); ++it) {
 			it->second->write_name(out);
 			out << ": ";
 			it->second->write_value(out);
@@ -279,19 +274,15 @@ namespace dsr {
 		++argv;
 		--argc;
 
-		current_unnamed_ = unnamed_arguments_.begin();
-		current_optional_unnamed_ = optional_unnamed_arguments_.begin();
-
-
+		auto current_unnamed_ = unnamed_arguments_.begin();
+		auto current_optional_unnamed_ = optional_unnamed_arguments_.begin();
 		for (int i = 0; i < argc; ++i) {
 			if (strcmp(argv[i], "/?") == 0) {
 				write_usage(std::cout);
 				exit(EXIT_SUCCESS);
 			}
 		}
-
 		while (argc != 0) {
-
 			const char* cur_arg = argv[0];
 			if (cur_arg[0] == '/') {
 				--argc; ++argv;
@@ -300,7 +291,7 @@ namespace dsr {
 					std::cerr << cur_arg << " is an invalid parameter.\n";
 					handle_error();
 				}
-				KeyMap::iterator f = keys_.find(cur_arg + 1);
+				auto f = keys_.find(cur_arg + 1);
 				if (f != keys_.end()) {
 					if (!f->second->process(argc, argv))
 						handle_error();
@@ -322,7 +313,7 @@ namespace dsr {
 					t->process(argc, argv);
 					++current_optional_unnamed_;
 				}
-				else if (extra_arguments_ != NULL) {
+				else if (extra_arguments_ != nullptr) {
 					extra_arguments_->push_back(cur_arg);
 					--argc;
 					++argv;
@@ -333,7 +324,6 @@ namespace dsr {
 				}
 			}
 		}
-
 		if (current_unnamed_ != unnamed_arguments_.end()) {
 			std::cerr << "Missing required arguments:\n";
 			for (; current_unnamed_ != unnamed_arguments_.end(); ++current_unnamed_) {

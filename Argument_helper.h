@@ -74,10 +74,7 @@ namespace dsr {
 		void write_values(std::ostream& out) const;
 
 	protected:
-		typedef std::map<std::string, Argument_target*> KeyMap;
-		typedef std::vector<Argument_target*> UVect;
-
-		KeyMap keys_;
+		std::map<std::string, Argument_target*> keys_;
 		std::string author_;
 		std::string name_;
 		std::string name_long_form_;
@@ -92,14 +89,13 @@ namespace dsr {
 			unsigned int build;
 		} version_ = { 0 };
 
+		typedef std::vector<Argument_target*> UVect;
 		UVect unnamed_arguments_;
 		UVect optional_unnamed_arguments_;
 		UVect all_arguments_;
 		std::string extra_arguments_descr_;
 		std::string extra_arguments_arg_descr_;
 		std::vector<std::string>* extra_arguments_ = nullptr;
-		UVect::iterator current_unnamed_;
-		UVect::iterator current_optional_unnamed_;
 
 		void new_argument_target(Argument_target*);
 		void handle_error() const;
