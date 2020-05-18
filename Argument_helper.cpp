@@ -81,10 +81,11 @@ namespace dsr {
 		}
 		virtual void write_value(std::ostream& out) const {
 			for (size_t i = 0; i < val.size(); ++i) {
-				out << val[i] << " ";
+				out << val[i];
+				if (i != val.size() - 1)
+					out << ", ";
 			}
 		}
-		virtual ~StringVectorTarget() {}
 	};
 
 

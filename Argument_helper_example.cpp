@@ -61,7 +61,7 @@ int main(int argc, const char* argv[]) {
 			"\t[/f value] : 3.14159\n"
 			"\t[/s string] : one string\n"
 			"\t[/t timer] : 5000\n"
-			"\t[/vector strings ...] : 1 2 3 four five");
+			"\t[/vector strings ...] : 1, 2, 3, four, five");
 
 		ah.process(argc, argv);
 
