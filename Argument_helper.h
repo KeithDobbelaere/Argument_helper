@@ -99,7 +99,6 @@ namespace dsr {
 
 		void set_description(const char* descr);
 
-		void set_version(float v);
 		void set_version(const char* str);
 
 		void set_name(const char* name);
@@ -127,7 +126,12 @@ namespace dsr {
 		std::string name_;
 		std::string description_;
 		std::string date_;
-		float version_;
+		struct version {
+			unsigned int major;
+			unsigned int minor;
+			unsigned int revision;
+			unsigned int build;
+		} version_ = { 0 };
 		bool seen_end_named_;
 		// List of unnamed arguments
 		std::vector<Argument_target*> unnamed_arguments_;
@@ -148,7 +152,6 @@ namespace dsr {
 }
 
 #define ARGUMENT_HELPER_BASICS(ah) ah.set_author("Daniel Russel, drussel@stanford.edu");\
-ah.set_version(_MSC_FULL_VER);\
 ah.set_build_date(__DATE__);
 
 #endif

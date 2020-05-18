@@ -127,7 +127,7 @@ namespace dsr {
 				std::cerr << "Missing value for argument." << std::endl;
 				return false;
 			}
-			if (sscanf(argv[0], "%le", &val) == 1) {
+			if (sscanf_s(argv[0], "%le", &val) == 1) {
 				--argc;
 				++argv;
 				return true;
@@ -162,7 +162,7 @@ namespace dsr {
 				std::cerr << "Missing value for argument." << std::endl;
 				return false;
 			}
-			if (sscanf(argv[0], "%d", &val) == 1) {
+			if (sscanf_s(argv[0], "%d", &val) == 1) {
 				--argc;
 				++argv;
 				return true;
@@ -197,7 +197,7 @@ namespace dsr {
 				std::cerr << "Missing value for argument." << std::endl;
 				return false;
 			}
-			if (sscanf(argv[0], "%ud", &val) == 1) {
+			if (sscanf_s(argv[0], "%ud", &val) == 1) {
 				--argc;
 				++argv;
 				return true;
@@ -230,7 +230,7 @@ namespace dsr {
 				std::cerr << "Missing value for argument." << std::endl;
 				return false;
 			}
-			if (sscanf(argv[0], "%c", &val) == 1) {
+			if (sscanf_s(argv[0], "%c", &val, 1) == 1) {
 				--argc;
 				++argv;
 				return true;
@@ -307,12 +307,6 @@ namespace dsr {
 
 
 	Argument_helper::Argument_helper() {
-		author_ = "Someone";
-		description_ = "This program does something.";
-		date_ = "A long long time ago.";
-		version_ = -1;
-		extra_arguments_ = NULL;
-		seen_end_named_ = false;
 		new_flag('v', "verbose", "Whether to print extra information", verbose);
 		new_flag('V', "VERBOSE", "Whether to print lots of extra information", VERBOSE);
 	}
@@ -340,12 +334,11 @@ namespace dsr {
 		name_ = descr;
 	}
 
-	void Argument_helper::set_version(float v) {
-		version_ = v;
-	}
-
 	void Argument_helper::set_version(const char* s) {
-		version_ = atof(s);
+		if (sscanf_s(s, "%u.%u.%u.%u", &version_.major, &version_.minor, &version_.revision, &version_.build) != 4) {
+			std::cerr << "\nError: Version string improperly formatted. Should be four numbers,\n";
+			std::cerr << "separated by '.' Example: \"0.1.023.1020\"\n";
+		}
 	}
 
 	void  Argument_helper::set_build_date(const char* date) {
@@ -353,8 +346,7 @@ namespace dsr {
 	}
 
 	void Argument_helper::new_argument_target(Argument_target* t) {
-		assert(t != NULL);
-		if (t->key != 0) {
+		if (t && t->key != 0) {
 			if (short_names_.find(t->key) != short_names_.end()) {
 				std::cerr << "Two arguments are defined with the same character key, namely" << std::endl;
 				short_names_[t->key]->write_usage(std::cerr);
@@ -488,7 +480,8 @@ namespace dsr {
 
 
 	void Argument_helper::write_usage(std::ostream& out) const {
-		out << name_ << " version " << version_ << ", by " << author_ << std::endl;
+		out << name_ << " version " << version_.major << '.' << version_.minor << '.' << version_.revision << '.' << version_.build;
+		out << ", by " << author_ << std::endl;
 		out << description_ << std::endl;
 		out << "Compiled on " << date_ << std::endl << std::endl;
 		out << "Usage: " << name_ << " ";
