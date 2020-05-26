@@ -177,15 +177,14 @@ namespace dsr {
 		out << '\n';
 		std::ostringstream oss;
 		oss << "Usage: " << name_ << " ";
-		for (auto it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
-			(*it)->write_name(oss);
+		for (auto arg : unnamed_arguments_) {
+			arg->write_name(oss);
 		}
-		for (auto it = optional_unnamed_arguments_.begin();
-			it != optional_unnamed_arguments_.end(); ++it) {
-			(*it)->write_name(oss);
+		for (auto arg : optional_unnamed_arguments_) {
+			arg->write_name(oss);
 		}
-		for (auto it = keys_.begin(); it != keys_.end(); ++it) {
-			(it->second)->write_name(oss);
+		for (auto key : keys_) {
+			(key.second)->write_name(oss);
 		}
 		if (extra_arguments_ != nullptr)
 			oss << '[' << extra_arguments_arg_descr_ << ']';
@@ -195,17 +194,16 @@ namespace dsr {
 			text_wrap(description_.c_str(), out, 60, "\t");
 		}
 		out << "\n\nParameter list:\n";
-		for (auto it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
-			(*it)->write_usage(out);
+		for (auto arg : unnamed_arguments_) {
+			arg->write_usage(out);
 			out << '\n';
 		}
-		for (auto it = optional_unnamed_arguments_.begin();
-			it != optional_unnamed_arguments_.end(); ++it) {
-			(*it)->write_usage(out);
+		for (auto arg : optional_unnamed_arguments_) {
+			arg->write_usage(out);
 			out << '\n';
 		}
-		for (auto it = keys_.begin(); it != keys_.end(); ++it) {
-			(it->second)->write_usage(out);
+		for (auto key : keys_) {
+			key.second->write_usage(out);
 			out << '\n';
 		}
 		if (!example_text_.empty()) {
@@ -215,22 +213,22 @@ namespace dsr {
 	}
 
 	void Argument_helper::write_values(std::ostream& out) const {
-		for (auto it = unnamed_arguments_.begin(); it != unnamed_arguments_.end(); ++it) {
-			(*it)->write_name(out);
+		for (auto arg : unnamed_arguments_) {
+			arg->write_name(out);
 			out << ": ";
-			(*it)->write_value(out);
+			arg->write_value(out);
 			out << '\n';
 		}
-		for (auto it = optional_unnamed_arguments_.begin(); it != optional_unnamed_arguments_.end(); ++it) {
-			(*it)->write_name(out);
+		for (auto arg : optional_unnamed_arguments_) {
+			arg->write_name(out);
 			out << ": ";
-			(*it)->write_value(out);
+			arg->write_value(out);
 			out << '\n';
 		}
-		for (auto it = keys_.begin(); it != keys_.end(); ++it) {
-			it->second->write_name(out);
+		for (auto key : keys_) {
+			key.second->write_name(out);
 			out << ": ";
-			it->second->write_value(out);
+			key.second->write_value(out);
 			out << '\n';
 		}
 		if (extra_arguments_ != nullptr) {
