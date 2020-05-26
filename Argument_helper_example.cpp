@@ -20,10 +20,11 @@ int main(int argc, const char* argv[]) {
 	bool b;
 	bool B;
 	std::vector<std::string> strings;
+	std::vector<std::string> extra_args;
 	{
 		dsr::Argument_helper ah;
 		ah.set_name_long_form("ExampleSoft (R) Example");
-		ah.set_version("1.0.0.0");
+		ah.set_version("1.0.1");
 		ah.set_author("Keith Dobbelaere");
 		ah.set_description("This is an example application to demonstrate how to integrate the Argument_helper class "
 		"into a program in order to read command arguments and process them into variables for use by the program.");
@@ -46,8 +47,9 @@ int main(int argc, const char* argv[]) {
 			"they're \"surrounded by quotes.\"", another_file_name);
 		ah.new_flag("B", "This flag sets a bool for use later in the program.", b);
 		ah.new_flag("b", "And here's another one.", B);
-		ah.new_named_string_vector("vector", "strings ...", "This is a switch which accepts a list of arguments, separated "
+		ah.new_named_args_vector("vector", "strings ...", "This is a switch which accepts a list of arguments, separated "
 			"by white-space. Not sure what you'd need this for, but here it is.", strings);
+		ah.set_extra_args_vector("extra arguments ...", "Extra arguments. ", extra_args);
 		// This is text to be displayed in the usage screen, accessible with the /? switch.
 		ah.set_example_text("\n>ARGUMENT_HELPER  "
 			"543 21 /t 5000 /d 1.79769e+308 /f 3.14159 /s \"one string\" /B\n/vector 1 2 3 four five\n\n"

@@ -53,10 +53,10 @@ namespace dsr {
 		template <typename T>
 		void new_optional_param(const char* value_name, const char* description, T& dest);
 
-		void new_named_string_vector(const char* key, const char* value_name, const char* description,
+		void new_named_args_vector(const char* key, const char* value_name, const char* description,
 			std::vector<std::string>& dest);
 
-		void set_string_vector(const char* arg_description, const char* description, std::vector<std::string>& dest);
+		void set_extra_args_vector(const char* arg_description, const char* description, std::vector<std::string>& dest);
 		void set_author(const char* author);
 		void set_description(const char* descr);
 		void set_version(const char* str);
@@ -136,9 +136,13 @@ namespace dsr {
 		}
 
 		virtual bool process(int& argc, const char**& argv) {
+			if (argc == 0) {
+				std::cerr << "Missing value for argument.\n";
+				return false;
+			}
 			std::istringstream iss(argv[0]);
 			if (!(iss >> val)) {
-				std::cerr << "Invalid argument: " << argv[1] << '\n';
+				std::cerr << "Invalid argument: " << argv[0] << '\n';
 				return false;
 			}
 			else if (!iss.eof()) {
@@ -164,6 +168,10 @@ namespace dsr {
 			Argument_target(k, descr, arg_descr), val(b) {}
 
 		virtual bool process(int& argc, const char**& argv) {
+			if (argc == 0) {
+				std::cerr << "Missing value for argument.\n";
+				return false;
+			}
 			val = argv[0];
 			--argc;
 			++argv;
@@ -174,24 +182,21 @@ namespace dsr {
 	};
 
 	template<typename T>
-	inline void Argument_helper::new_param(const char* arg_description, const char* description, T& dest)
-	{
+	inline void Argument_helper::new_param(const char* arg_description, const char* description, T& dest) {
 		Argument_target* t = new Specialized_target<T>(arg_description, description, dest);
 		unnamed_arguments_.push_back(t);
 		all_arguments_.push_back(t);
 	}
 
 	template<typename T>
-	inline void Argument_helper::new_named_param(const char* key, const char* value_name, const char* description, T& dest)
-	{
+	inline void Argument_helper::new_named_param(const char* key, const char* value_name, const char* description, T& dest) {
 		Argument_target* t = new Specialized_target<T>(key, value_name, description, dest);
 		t->is_optional = true;
 		new_argument_target(t);
 	}
 
 	template<typename T>
-	inline void Argument_helper::new_optional_param(const char* value_name, const char* description, T& dest)
-	{
+	inline void Argument_helper::new_optional_param(const char* value_name, const char* description, T& dest) {
 		Argument_target* t = new Specialized_target<T>(value_name, description, dest);
 		t->is_optional = true;
 		optional_unnamed_arguments_.push_back(t);

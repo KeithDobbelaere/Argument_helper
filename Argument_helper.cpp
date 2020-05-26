@@ -20,8 +20,6 @@
  Keith Dobbelaere  keith77mn77@gmail.com
  5/17/2020
  *******************************************************************/
-#include <cassert>
-
 #include "Argument_helper.h"
 
 namespace dsr {
@@ -87,17 +85,16 @@ namespace dsr {
 			return true;
 		}
 		virtual void write_value(std::ostream& out) const {
-			for (size_t i = 0; i < val.size(); ++i) {
-				out << val[i];
-				if (i != val.size() - 1)
+			for (auto it = val.begin(); it != val.end(); ++it) {
+				out << *it;
+				if (std::next(it) != val.end())
 					out << ", ";
 			}
 		}
 	};
 
-	void Argument_helper::set_string_vector(const char* arg_description,
+	void Argument_helper::set_extra_args_vector(const char* arg_description,
 		const char* description, std::vector<std::string>& dest) {
-		assert(extra_arguments_ == nullptr, "Error: More than one vector specified to store extra arguments.");
 		extra_arguments_descr_ = description;
 		extra_arguments_arg_descr_ = arg_description;
 		extra_arguments_ = &dest;
@@ -113,8 +110,7 @@ namespace dsr {
 
 	void Argument_helper::set_name(const char* name) {
 		name_ = name;
-		for (auto p = name_.begin(); p != name_.end(); ++p)
-			*p = toupper(*p);
+		for (auto& chr : name_) chr = toupper(chr);
 	}
 
 	void Argument_helper::set_name_long_form(const char* name) {
@@ -126,10 +122,7 @@ namespace dsr {
 	}
 
 	void Argument_helper::set_version(const char* s) {
-		if (sscanf_s(s, "%u.%u.%u.%u", &version_.major, &version_.minor, &version_.revision, &version_.build) != 4) {
-			std::cerr << "\nError: Version string improperly formatted. Should be four numbers,\n";
-			std::cerr << "separated by '.' Example: \"0.1.023.1020\"\n";
-		}
+		sscanf_s(s, "%u.%u.%u.%u", &version_.major, &version_.minor, &version_.revision, &version_.build);
 	}
 
 	void  Argument_helper::set_build_date(const char* date) {
@@ -160,7 +153,7 @@ namespace dsr {
 		new_argument_target(t);
 	};
 
-	void Argument_helper::new_named_string_vector(const char* key, const char* arg_description, const char* description,
+	void Argument_helper::new_named_args_vector(const char* key, const char* arg_description, const char* description,
 		std::vector<std::string>& dest) {
 		Argument_target* t = new StringVectorTarget(key, arg_description, description, dest);
 		t->is_optional = true;
@@ -194,9 +187,9 @@ namespace dsr {
 		for (auto it = keys_.begin(); it != keys_.end(); ++it) {
 			(it->second)->write_name(oss);
 		}
-		text_wrap(oss.str().c_str(), out, 70);
 		if (extra_arguments_ != nullptr)
-			text_wrap(extra_arguments_arg_descr_.c_str(), out, 70);
+			oss << '[' << extra_arguments_arg_descr_ << ']';
+		text_wrap(oss.str().c_str(), out, 70);
 		if (!description_.empty()) {
 			out << "\n\nDescription:\n";
 			text_wrap(description_.c_str(), out, 60, "\t");
@@ -216,7 +209,7 @@ namespace dsr {
 			out << '\n';
 		}
 		if (!example_text_.empty()) {
-			out << "\nExample:\n";
+			out << "Example:\n";
 			out << example_text_ << '\n';
 		}
 	}
@@ -234,16 +227,19 @@ namespace dsr {
 			(*it)->write_value(out);
 			out << '\n';
 		}
-		if (extra_arguments_ != nullptr) {
-			for (auto it = extra_arguments_->begin(); it != extra_arguments_->end(); ++it) {
-				out << *it << " ";
-			}
-		}
 		for (auto it = keys_.begin(); it != keys_.end(); ++it) {
 			it->second->write_name(out);
 			out << ": ";
 			it->second->write_value(out);
 			out << '\n';
+		}
+		if (extra_arguments_ != nullptr) {
+			out << '[' << extra_arguments_arg_descr_ << "] : ";
+			for (auto it = extra_arguments_->begin(); it != extra_arguments_->end(); ++it) {
+				out << *it;
+				if (std::next(it) != extra_arguments_->end())
+					out << ", ";
+			}
 		}
 	}
 
